@@ -20,7 +20,7 @@ try {
     Write-Host 'Desktop shortcuts removed.'
 
     if ((Read-Host 'Also delete your settings, display layouts, logs and downloaded tools from this folder? [y/N]') -match '^(y|yes)$') {
-        foreach ($item in 'config.json', 'pc-layout.cfg', 'ps5-layout.cfg', 'state.txt', 'logs', 'Tools') {
+        foreach ($item in 'config.json', 'pc-layout.cfg', 'ps5-layout.cfg', 'state.txt', 'logs', 'Tools', 'PS5PCSwitch.exe') {
             Remove-Item (Join-Path $Root $item) -Recurse -Force -ErrorAction SilentlyContinue
         }
         Write-Host 'Personal files deleted.'

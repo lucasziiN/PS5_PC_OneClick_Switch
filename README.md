@@ -32,7 +32,7 @@ No streaming and no capture card: the PS5 stays plugged straight into the monito
    - finds your PS5 on the network and pairs with it (once: PlayStation sign-in in your browser, then a PIN from the PS5)
    - lets you pick the shared monitor from a list and detects its PC and PS5 inputs
    - saves your normal display layout and creates the PS5 layout automatically
-   - asks which automatic switches you want, creates desktop shortcuts, and starts the tray app
+   - asks which automatic switches you want, creates desktop shortcuts, and builds and starts the tray app (compiled on your PC from `Tray.cs` with the C# compiler built into Windows; no download)
 
 Tip: give the PS5 a fixed IP in your router (DHCP reservation) so it's always found.
 
@@ -69,7 +69,8 @@ flowchart LR
 
 - **Monitor input:** DDC/CI VCP code `60` (Input Select), via NirSoft ControlMyMonitor. The monitor is addressed by its EDID *Short Monitor ID* (for example `AOCA615`), which stays the same no matter which monitor is Windows' primary.
 - **Windows layout:** NirSoft MultiMonitorTool saves and loads layouts. Re-enabling the shared monitor uses Windows' own `DisplaySwitch /extend`, because MultiMonitorTool can't re-enable a disabled monitor on current Windows 11 builds.
-- **PS5:** [ps5-remoteplay](https://github.com/iharosi/ps5-remoteplay) wakes the PS5 and puts it in Rest Mode. The tray watches the PS5's status by asking it on the network twice per second (UDP port 9302), which uses no measurable CPU.
+- **PS5:** [ps5-remoteplay](https://github.com/iharosi/ps5-remoteplay) wakes the PS5 and puts it in Rest Mode. The tray watches the PS5's status by asking it on the network twice per second (UDP port 9302).
+- **Tray app:** a small C# program (`Tray.cs`, built into `PS5PCSwitch.exe` by the installer). It only watches and launches; the switches run in PowerShell and exit when done. Idle it uses about 35 MB of RAM and no measurable CPU.
 - **Speed:** the PS5 boots while the displays switch, so PS5 mode takes about as long as the PS5 itself needs to wake (~10 s). PC mode keeps the monitor on the PS5 for a moment so you see its shutdown screen, then switches back (~10 s including Rest Mode).
 
 ## Settings
@@ -111,7 +112,7 @@ Right-click `Uninstall.ps1` > *Run with PowerShell*. It stops the tray app, remo
 | File | Purpose |
 |---|---|
 | `Install.ps1` / `Uninstall.ps1` | Guided setup / removal |
-| `Tray.ps1` | Tray app: menu, status, automatic switching |
+| `Tray.cs` | Tray app source: menu, status, automatic switching (built into `PS5PCSwitch.exe` on install) |
 | `PS5-Mode.ps1`, `PC-Mode.ps1`, `Toggle.ps1` | The switches (used by the tray and the desktop shortcuts) |
 | `Common.ps1` | Shared logic |
 | `DisplayModes.cs` | Sets monitors to their highest refresh rate (Windows can drop them to 60 Hz) |

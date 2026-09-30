@@ -12,3 +12,6 @@
 
 # NirSoft tools are downloaded by Install.ps1 and are not redistributed here
 /Tools/
+
+# Tray app, compiled from Tray.cs by Install.ps1
+/PS5PCSwitch.exe

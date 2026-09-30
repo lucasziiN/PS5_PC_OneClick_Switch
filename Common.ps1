@@ -229,15 +229,17 @@ function Set-SwitchConfigValue([string]$Key, $Value) {
     $raw | ConvertTo-Json | Set-Content -Path $configPath -Encoding UTF8
 }
 
-# ---------------------------------------------------------------- shortcuts / tray process
+# ---------------------------------------------------------------- shortcuts / tray app
 
 $TrayStartupShortcut = Join-Path ([Environment]::GetFolderPath('Startup')) 'PS5 PC Switch.lnk'
+$TraySource = Join-Path $Root 'Tray.cs'
+$TrayExe = Join-Path $Root 'PS5PCSwitch.exe'
 
 # Creates a shortcut that runs one of this project's scripts in a hidden PowerShell window.
 function New-ScriptShortcut([string]$ShortcutPath, [string]$ScriptName, [string]$Description) {
     $shortcut = (New-Object -ComObject WScript.Shell).CreateShortcut($ShortcutPath)
     $shortcut.TargetPath = 'powershell.exe'
-    $shortcut.Arguments = "-NoProfile -STA -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$(Join-Path $Root $ScriptName)`""
+    $shortcut.Arguments = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$(Join-Path $Root $ScriptName)`""
     $shortcut.WorkingDirectory = $Root
     $shortcut.Description = $Description
     $shortcut.IconLocation = "$env:SystemRoot\System32\shell32.dll,167"
@@ -245,26 +247,49 @@ function New-ScriptShortcut([string]$ShortcutPath, [string]$ScriptName, [string]
     $shortcut.Save()
 }
 
+# Compiles Tray.cs into PS5PCSwitch.exe with the C# compiler that ships with .NET Framework 4 on every
+# Windows 10/11 PC, so no binary has to be downloaded and no SDK installed.
+function Build-TrayApp {
+    $compiler = @(
+        (Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'),
+        (Join-Path $env:WINDIR 'Microsoft.NET\Framework\v4.0.30319\csc.exe')
+    ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+    if (-not $compiler) { throw '.NET Framework 4 C# compiler (csc.exe) not found; it is part of every Windows 10/11 install.' }
+    $result = Invoke-External $compiler @(
+        '/nologo', '/target:winexe', '/optimize+', "/out:$TrayExe",
+        '/r:System.Windows.Forms.dll', '/r:System.Drawing.dll', '/r:System.Web.Extensions.dll', '/r:Microsoft.CSharp.dll',
+        $TraySource) 120
+    if ($result.ExitCode -ne 0) { throw "Building the tray app failed:`n$($result.StdOut)`n$($result.StdErr)" }
+}
+
 function Test-TrayAutostart { return Test-Path $TrayStartupShortcut }
 
 function Set-TrayAutostart([bool]$Enabled) {
-    if ($Enabled) {
-        New-ScriptShortcut $TrayStartupShortcut 'Tray.ps1' 'PS5 / PC switch tray app'
-    } else {
-        Remove-Item $TrayStartupShortcut -Force -ErrorAction SilentlyContinue
-    }
+    if (-not $Enabled) { Remove-Item $TrayStartupShortcut -Force -ErrorAction SilentlyContinue; return }
+    $shortcut = (New-Object -ComObject WScript.Shell).CreateShortcut($TrayStartupShortcut)
+    $shortcut.TargetPath = $TrayExe
+    $shortcut.WorkingDirectory = $Root
+    $shortcut.Description = 'PS5 / PC switch tray app'
+    $shortcut.Save()
 }
 
+# Starts the tray app, (re)building it first when Tray.cs is newer than the exe (e.g. after an update).
 function Start-TrayApp {
-    Start-Process -FilePath 'powershell.exe' -WindowStyle Hidden -ArgumentList @(
-        '-NoProfile', '-STA', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', "`"$(Join-Path $Root 'Tray.ps1')`"")
+    if (-not (Test-Path $TrayExe) -or (Get-Item $TraySource).LastWriteTimeUtc -gt (Get-Item $TrayExe).LastWriteTimeUtc) {
+        Stop-TrayApp
+        Build-TrayApp
+    }
+    Start-Process -FilePath $TrayExe -WorkingDirectory $Root
 }
 
-# Stops running tray apps (matched by their -File argument), except the calling process.
 function Stop-TrayApp {
-    Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" |
-        Where-Object { $_.CommandLine -match '-File\s+"[^"]*\\Tray\.ps1"' -and $_.ProcessId -ne $PID } |
-        ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+    $running = @(Get-Process -Name 'PS5PCSwitch' -ErrorAction SilentlyContinue)
+    if ($running.Count -eq 0) { return }
+    $running | Stop-Process -Force
+    # The exe file stays locked until the process has fully exited.
+    $null = Wait-Until -Description 'Tray app stopped' -TimeoutSec 5 -IntervalMs 100 -Condition {
+        -not (Get-Process -Name 'PS5PCSwitch' -ErrorAction SilentlyContinue)
+    }
 }
 
 function Set-SwitchState([string]$Mode) {
