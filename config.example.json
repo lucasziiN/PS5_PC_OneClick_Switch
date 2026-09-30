@@ -1,0 +1,15 @@
+{
+    "PS5IP":  "192.168.1.50",
+    "PS5Passcode":  "",
+    "PS5Remote":  "",
+    "Monitor":  "ABC1234",
+    "PCInput":  15,
+    "PS5Input":  17,
+    "AutoPS5OnWake":  true,
+    "AutoPCOnStandby":  true,
+    "StandbyAnimationMs":  1500,
+    "ControlTool":  "Tools\\ControlMyMonitor.exe",
+    "MultiTool":  "Tools\\MultiMonitorTool.exe",
+    "PCLayout":  "pc-layout.cfg",
+    "PS5Layout":  "ps5-layout.cfg"
+}

@@ -1,0 +1,14 @@
+# Personal settings: PS5 IP, PS5 passcode, monitor ID (created by Install.ps1)
+/config.json
+
+# Personal Windows display layouts (created by Install.ps1)
+/pc-layout.cfg
+/ps5-layout.cfg
+*.cfg.new
+
+# Runtime state and logs
+/state.txt
+/logs/
+
+# NirSoft tools are downloaded by Install.ps1 and are not redistributed here
+/Tools/
